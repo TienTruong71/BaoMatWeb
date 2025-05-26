@@ -2,6 +2,7 @@ const Order = require("../../models/order.model");
 const User = require("../../models/user.model");
 
 const { calculateTotalAmount, formatOrder, calculateTotals } = require("../../config/helper");
+const OrderStateManager = require('../../utils/states/order-state-manager');
 
 
 
@@ -68,37 +69,18 @@ module.exports.updateOrderStatus = async (req, res) => {
   const { status } = req.body;
 
   try {
-      const order = await Order.findById(id);
-      if (!order) {
-          return res.status(404).json({ success: false, message: 'Không tìm thấy đơn hàng' });
-      }
-
-      order.status = status;
+      // Sử dụng OrderStateManager để cập nhật trạng thái
+      const result = await OrderStateManager.updateOrderStatus(id, status);
       
-      // Tự động cập nhật paymentStatus dựa trên status
-      if (status === 'Completed') {
-          order.paymentStatus = 'Paid';
-          console.log(`Đơn hàng ${id} đã được đánh dấu là đã thanh toán khi hoàn thành`);
+      if (result.success) {
+          // Nếu cập nhật thành công, trả về kết quả
+          return res.json(result);
       } else {
-          // Nếu không phải Completed, đặt là Unpaid
-          order.paymentStatus = 'Unpaid';
-          console.log(`Đơn hàng ${id} đã được đặt lại trạng thái thanh toán thành chưa thanh toán`);
+          // Nếu không thể cập nhật, trả về lỗi
+          return res.status(400).json(result);
       }
-      
-      // Sử dụng hàm calculateTotals để cập nhật lại các giá trị tổng tiền
-      calculateTotals(order);
-      
-      await order.save();
-
-      return res.json({ 
-          success: true, 
-          message: 'Cập nhật trạng thái thành công', 
-          updatedStatus: status,
-          paymentStatus: order.paymentStatus,
-          totalAmount: order.totalAmount
-      });
   } catch (error) {
-      console.error(error);
+      console.error('Lỗi khi cập nhật trạng thái đơn hàng:', error);
       return res.status(500).json({ success: false, message: 'Lỗi máy chủ' });
   }
 };
@@ -117,30 +99,20 @@ module.exports.applyBulkAction = async (req, res) => {
   }
 
   try {
-    let updateData = { status: newStatus };
-    
-    // Cập nhật paymentStatus dựa trên trạng thái mới
-    if (newStatus === 'Completed') {
-      updateData.paymentStatus = 'Paid';
-      console.log(`Tất cả đơn hàng được chọn sẽ được đánh dấu là đã thanh toán khi hoàn thành`);
-    } else {
-      updateData.paymentStatus = 'Unpaid';
-      console.log(`Tất cả đơn hàng được chọn sẽ được đặt lại trạng thái thanh toán thành chưa thanh toán`);
-    }
-    
-    const result = await Order.updateMany(
-      { _id: { $in: orderIds } },
-      { $set: updateData }
+    // Sử dụng Promise.all để cập nhật từng đơn hàng riêng biệt sử dụng State Pattern
+    const updatePromises = orderIds.map(orderId => 
+      OrderStateManager.updateOrderStatus(orderId, newStatus)
     );
-
-    if (result.modifiedCount === 0) {
-      return res.status(404).json({ success: false, message: 'Không có đơn hàng nào được cập nhật' });
-    }
-
+    
+    const results = await Promise.all(updatePromises);
+    
+    // Đếm số đơn hàng được cập nhật thành công
+    const successCount = results.filter(result => result.success).length;
+    
     return res.status(200).json({
       success: true,
-      message: `Đã cập nhật trạng thái cho ${result.modifiedCount} đơn hàng và ${newStatus === 'Completed' ? 'đánh dấu là đã thanh toán' : 'đặt lại trạng thái thanh toán thành chưa thanh toán'}`,
-      updatedCount: result.modifiedCount
+      message: `Đã cập nhật trạng thái cho ${successCount} đơn hàng và ${newStatus === 'Completed' ? 'đánh dấu là đã thanh toán' : 'đặt lại trạng thái thanh toán thành chưa thanh toán'}`,
+      updatedCount: successCount
     });
   } catch (error) {
     console.error("Lỗi khi cập nhật đơn hàng:", error);

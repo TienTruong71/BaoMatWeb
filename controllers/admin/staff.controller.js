@@ -142,7 +142,7 @@ class AdminStaffController {
           errorMessage: "Tên đăng nhập hoặc email đã tồn tại!",
         });
       }
-  
+
       const newUser = new User({
         username,
         password,

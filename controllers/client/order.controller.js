@@ -3,6 +3,7 @@ const Cart = require('../../models/cart.model');
 const User = require('../../models/user.model');
 const Product = require('../../models/product.model');
 const { calculateTotals } = require('../../config/helper');
+const OrderStateManager = require('../../utils/states/order-state-manager');
 
 class OrderController {
     // Hiển thị trang thanh toán
@@ -285,7 +286,7 @@ class OrderController {
                 pageTitle: "Chi tiết đơn hàng",
                 order,
                 user: req.session.user,
-                currentPage: "cart"
+                currentPage: "order"
             });
         } catch (error) {
             console.error('Lỗi khi hiển thị chi tiết đơn hàng:', error);
@@ -383,25 +384,19 @@ class OrderController {
             const userId = req.session.user._id;
             const orderId = req.params.orderId;
             
-            // Lấy thông tin đơn hàng
-            const order = await Order.findOne({ _id: orderId, userId });
+            // Sử dụng OrderStateManager để yêu cầu hủy đơn hàng
+            const result = await OrderStateManager.requestCancelOrder(orderId, userId);
             
-            if (!order) {
-                return res.status(404).send('Không tìm thấy đơn hàng');
+            if (!result.success) {
+                return res.status(400).send(result.message || 'Không thể hủy đơn hàng');
             }
             
-            // Kiểm tra trạng thái đơn hàng
-            if (order.status !== 'Pending' && order.status !== 'Confirmed') {
-                return res.status(400).send('Không thể hủy đơn hàng ở trạng thái này');
-            }
-            
-            // Cập nhật trạng thái đơn hàng
-            order.status = 'RequestCancelled';
-            await order.save();
-            
-            console.log(`Đơn hàng ${orderId} đã bị hủy bởi người dùng ${userId}`);
+            console.log(`Đơn hàng ${orderId} đã yêu cầu hủy bởi người dùng ${userId}`);
             
             // Khôi phục trạng thái sản phẩm
+            // Lưu ý: Việc khôi phục trạng thái sản phẩm có thể được chuyển vào OrderStateManager
+            // hoặc giữ nguyên ở đây nếu cần xử lý đặc biệt
+            const order = await Order.findOne({ _id: orderId, userId });
             console.log('Restoring product status');
             for (const item of order.items) {
                 try {

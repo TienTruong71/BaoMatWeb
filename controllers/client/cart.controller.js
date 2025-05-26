@@ -15,7 +15,7 @@ class CartController {
 
             console.log('Fetching cart for user:', userId);
 
-            // 2. Lấy cart, populate chỉ lấy đúng các trường cần thiết
+            // 2. Lấy cart, populate chỉ lấy đúng các trường để hiện UI
             const cart = await Cart
                 .findOne({ userId })
                 .populate('items.productId', 'title sellPrice thumbnail slug')
@@ -23,6 +23,7 @@ class CartController {
 
             console.log('Cart found:', cart ? 'Yes' : 'No');
 
+            //Kiểm tra xem giỏ hàng có tồn tại
             if (!cart || !cart.items || cart.items.length === 0) {
                 console.log('Cart is empty');
                 return res.render('client/pages/shop-cart', {
@@ -187,7 +188,7 @@ class CartController {
             }
 
             // 7. Thêm sản phẩm vào giỏ hàng
-            const existingItemIndex = cart.items.findIndex(i => i.productId && i.productId.toString() === prodId);
+            const existingItemIndex = cart.items.findIndex(i => i.productId && i.productId.toString() === prodId);  // T
             
             console.log(`Kiểm tra sản phẩm trong giỏ hàng: ${existingItemIndex >= 0 ? 'Có' : 'Không'}`);
             
