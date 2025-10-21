@@ -18,8 +18,24 @@ const forgotRoute = require("./routes/forgot.route");
 const systemConfig = require("./config/system.js")
 const loadCatalogList = require('./middleware/catalog.middleware.js');
 
+// Thêm phần bảo vệ CSRF
+const csrf = require('csurf');
+const cookieParser = require('cookie-parser');
 
-const port = process.env.PORT;
+// đọc chứng chỉ SSL
+const https = require('https');  
+const http = require('http');    
+const fs = require('fs');
+const privateKey = fs.readFileSync(path.join(__dirname, 'cert', 'key.pem'), 'utf8');
+const certificate = fs.readFileSync(path.join(__dirname, 'cert', 'cert.pem'), 'utf8');
+const credentials = { key: privateKey, cert: certificate };
+
+
+// const port = process.env.PORT
+
+const httpPort = 3000;   
+const httpsPort = 3443;  
+
 
 app.use(express.static(path.join(__dirname, 'src', 'public')));
 app.use(loadCatalogList);
@@ -27,11 +43,21 @@ app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
 
 app.use(session({
-  secret: "HuuThong15082004", // Thay bằng một chuỗi bí mật của bạn
+  secret: "ThanhTien2004", 
   resave: false,
   saveUninitialized: true,
   cookie: { secure: false } // Đặt `secure: true` nếu sử dụng HTTPS
 }));
+
+app.use(cookieParser());
+const csrfProtection = csrf({ cookie: true });
+app.use(csrfProtection);
+
+// Gắn token CSRF cho tất cả view (dùng trong form hoặc Ajax)
+app.use((req, res, next) => {
+  res.locals.csrfToken = req.csrfToken();
+  next();
+});
 
 app.set('view engine', 'hbs')
 app.set('views', path.join(__dirname, 'src/resources/views'));
@@ -101,6 +127,15 @@ app.locals.prefixAdmin = systemConfig.prefixAdmin;
 
 database.connect();
 
-app.listen(port, () => {
-  console.log(`Example app listening on port ${port}`)
-})
+
+
+https.createServer(credentials, app).listen(httpsPort, () => {
+  console.log(`HTTPS Server running at https://localhost:${httpsPort}`);
+});
+
+http.createServer((req, res) => {
+  res.writeHead(301, { "Location": `https://${req.headers.host.split(':')[0]}:${httpsPort}${req.url}` });
+  res.end();
+}).listen(httpPort, () => {
+  console.log(`HTTP redirect server running on port ${httpPort}`);
+});

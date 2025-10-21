@@ -1,21 +1,34 @@
 module.exports = {
     checkAdminRole: (req, res, next) => {
         const user = req.session.user;
-
-        // Kiểm tra nếu người dùng chưa đăng nhập hoặc không phải Admin
-        if (!user || (user.role !== 3)) {
-            return res.status(403).render("error", { message: "Bạn không có quyền truy cập vào trang này." });
+   
+         if (!req.session || !req.session.user) {
+            return res.redirect("/login");
         }
-        next(); // Cho phép tiếp tục nếu role hợp lệ
+        if (!user || (user.role !== 3)) {
+            return res.status(403).render("error", { message: "Truy cập bị từ chối." });
+        }
+        next(); 
     },
 
     checkStaffRole: (req, res, next) => {
-        const user = req.session.user;
 
-        // Kiểm tra nếu người dùng chưa đăng nhập hoặc không phải Staff
-        if (!user || (user.role !== 2 & user.role !== 3) ) {
-            return res.status(403).render("error", { message: "Bạn không có quyền truy cập vào trang này." });
+        if (!req.session || !req.session.user) {
+            return res.redirect("/login");
         }
-        next(); // Cho phép tiếp tục nếu role hợp lệ
+        const user = req.session.user;
+        
+        if (!user || (user.role !== 2 && user.role !== 3) ) {
+            return res.status(403).render("error", { message: "Truy cập bị từ chối." });
+        }
+        next(); 
+    },
+
+    checkUserLogin : (req, res, next) => {
+    if (!req.session || !req.session.user) {
+        return res.redirect('/login');
+    }
+    next();
     }
 };
+
