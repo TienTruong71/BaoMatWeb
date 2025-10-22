@@ -91,6 +91,7 @@
                             <div class="row">
                                 <div class="col-xs-12 col-sm-12">
                                     <form name="loginForm" class="loginForm" action="/login" method="POST">
+                                        <input type="hidden" name="_csrf" value="{{csrfToken}}">
                                         <div class="form-group">
                                             <input type="email" class="form-control email" name="emailAddress" placeholder="Email address">
                                         </div>
@@ -131,6 +132,7 @@
                                         <h3 class="auth-title">Sign up for free!</h3>
                                     </div>
                                     <form name="signupForm" class="signupForm" action="/signup" method="POST">
+                                        <input type="hidden" name="_csrf" value="{{csrfToken}}">
                                         <div class="form-group">
                                             <input type="email" class="form-control" name="emailAddress" placeholder="Email address">
                                         </div>
@@ -164,6 +166,7 @@
                                         <p>Fill in your e-mail address below and we will send you an email with further instructions.</p>
                                     </div>
                                     <form name="forgetForm" class="forgetForm" action="/forgot-password/send-otp" method="POST">
+                                        <input type="hidden" name="_csrf" value="{{csrfToken}}">
                                         <div class="form-group">
                                             <input type="email" class="form-control" name="emailAddress" placeholder="Email address">
                                         </div>

@@ -2,12 +2,32 @@ const path = require('path');
 const express = require('express');
 const session = require('express-session');
 const moment = require('moment');
-const Swal = require('sweetalert2')
+const Swal = require('sweetalert2');
 const catalogRouter = require('./routes/client/catalog.route');
-require('dotenv').config(); //nhúng env
+require('dotenv').config();
 const Cart = require('./models/cart.model');
 const database = require("./config/database.js");
 const app = express();
+
+const helmet = require('helmet');
+app.use(
+  helmet({
+    contentSecurityPolicy: {
+      useDefaults: true,
+      directives: {
+        defaultSrc: ["'self'"],
+        scriptSrc: ["'self'", "https://cdn.jsdelivr.net"],
+        styleSrc: ["'self'", "https://fonts.googleapis.com"],
+        imgSrc: ["'self'", "data:", "https://cdn.example.com"],
+        fontSrc: ["'self'", "https://fonts.gstatic.com"],
+        formAction: ["'self'"],
+        frameAncestors: ["'none'"],
+      },
+    },
+    crossOriginEmbedderPolicy: false,
+  })
+);
+
 const hbs = require('express-handlebars');
 const routeClient = require("./routes/client/index.route");
 const routeAdmin = require("./routes/admin/index.route");
@@ -42,18 +62,28 @@ app.use(loadCatalogList);
 app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
 
+const rateLimit = require("express-rate-limit");
+
+const limiter = rateLimit({
+  windowMs: 1 * 60 * 1000,
+  max: 100, // Mỗi IP tối đa 100 yêu cầu mỗi phút
+  message: "Bạn đã gửi quá nhiều yêu cầu. Vui lòng thử lại sau.",
+});
+
+app.use(limiter);
+app.use(cookieParser());
+
 app.use(session({
   secret: "ThanhTien2004", 
   resave: false,
   saveUninitialized: true,
-  cookie: { secure: false } // Đặt `secure: true` nếu sử dụng HTTPS
+  cookie: { httpOnly: true, secure: true, sameSite: 'Strict' }
 }));
 
-app.use(cookieParser());
-const csrfProtection = csrf({ cookie: true });
+const csrfProtection = csrf({ cookie: false });
 app.use(csrfProtection);
 
-// Gắn token CSRF cho tất cả view (dùng trong form hoặc Ajax)
+
 app.use((req, res, next) => {
   res.locals.csrfToken = req.csrfToken();
   next();
@@ -127,7 +157,17 @@ app.locals.prefixAdmin = systemConfig.prefixAdmin;
 
 database.connect();
 
+// app.use((req, res, next) => {
+//   res.setHeader(
+//     "Content-Security-Policy",
+//     "default-src 'self'; script-src 'self' https://cdn.jsdelivr.net; style-src 'self' https://fonts.googleapis.com; img-src 'self' data: https://cdn.example.com; font-src 'self' https://fonts.gstatic.com; form-action 'self'; frame-ancestors 'none';"
+//   );
+//   next();
+// });
 
+app.use((req, res) => {
+  res.status(404).send("404 Not Found");
+});
 
 https.createServer(credentials, app).listen(httpsPort, () => {
   console.log(`HTTPS Server running at https://localhost:${httpsPort}`);

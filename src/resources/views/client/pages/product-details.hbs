@@ -1,5 +1,4 @@
-<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
-<!-- Breadcrumb Section Begin -->
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11" integrity="sha384-BX77tysPwMmjY87hyuYr8cUvUQiHJMvAjLu9iWF4Ls6HQLzalVw0fm/Ez1VwzAv7" crossorigin="anonymous"></script>
 <section class="breadcrumb-section set-bg" data-setbg="/img/breadcrumb.jpg">
   <div class="container">
     <div class="row">
@@ -50,6 +49,7 @@
 
           <p>{{product.description}}</p>
           <form id="addCartForm" action="/cart/add/{{product._id}}" method="POST">
+            <input type="hidden" name="_csrf" value="{{csrfToken}}">
             <div class="product__details__quantity">
               <div class="quantity">
                 <div class="pro-qty">

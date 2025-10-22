@@ -1,17 +1,21 @@
 const { default: Swal } = require("sweetalert2");
-const User = require("../models/user.model")
+const User = require("../models/user.model");
+const sanitize = require("mongo-sanitize"); // ✅ thêm dòng này
 
 class AuthController {
 
     async signup(req, res) {
         try {
-            const { emailAddress, fullName, password } = req.body;
+            const emailAddress = sanitize(req.body.emailAddress);
+            const fullName = sanitize(req.body.fullName);
+            const password = sanitize(req.body.password);
 
-            // Tạo username tự động từ emailAddress
             const username = emailAddress.split("@")[0];
 
-            // Kiểm tra nếu email hoặc username đã tồn tại
-            const existingUser = await User.findOne({ $or: [{ username }, { emailAddress }] });
+            const existingUser = await User.findOne({
+                $or: [{ username }, { emailAddress }]
+            });
+
             if (existingUser) {
                 return res.render("login", { 
                     message: "Username hoặc Email đã được sử dụng.",
@@ -19,7 +23,6 @@ class AuthController {
                 });
             }
 
-            // Tạo người dùng mới
             const user = new User({
                 username,
                 emailAddress,
@@ -27,7 +30,6 @@ class AuthController {
                 password
             });
 
-            // Lưu người dùng vào cơ sở dữ liệu
             await user.save();
 
             res.render("login", {
@@ -44,9 +46,9 @@ class AuthController {
 
     async login(req, res) {
         try {
-            const { emailAddress, password } = req.body;
+            const emailAddress = sanitize(req.body.emailAddress);
+            const password = sanitize(req.body.password);
 
-            // Tìm người dùng theo email
             const user = await User.findOne({ emailAddress });
             if (!user) {
                 return res.render("login", { 
@@ -55,7 +57,6 @@ class AuthController {
                 });
             }
 
-            // Kiểm tra trạng thái tài khoản
             if (user.status === "locked") {
                 return res.render("login", {
                     message: "Tài khoản của bạn đã bị khóa.",
@@ -63,7 +64,6 @@ class AuthController {
                 });
             }
 
-            // Kiểm tra mật khẩu
             const isMatch = await user.comparePassword(password);
             if (!isMatch) {
                 return res.render("login", { 
@@ -72,7 +72,6 @@ class AuthController {
                 });
             }
 
-            // Lưu thông tin người dùng vào session
             req.session.user = {
                 _id: user._id,
                 username: user.username,
@@ -81,7 +80,6 @@ class AuthController {
                 role: user.role
             };
 
-            // Chuyển hướng đến trang chủ
             res.redirect("/waiting");
         } catch (error) {
             return res.render("login", { 
@@ -93,13 +91,8 @@ class AuthController {
 
     async logout(req, res) {
         try {
-            // Xóa thông tin người dùng khỏi session
             req.session.destroy((err) => {
-                if (err) {
-                    console.error("Lỗi khi xóa session:", err);
-                }
-
-                // Chuyển hướng về trang đăng nhập
+                if (err) console.error("Lỗi khi xóa session:", err);
                 res.redirect("/");
             });
         } catch (error) {
