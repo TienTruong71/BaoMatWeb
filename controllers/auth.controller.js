@@ -1,14 +1,34 @@
 const { default: Swal } = require("sweetalert2");
 const User = require("../models/user.model")
-
+const bcrypt = require("bcrypt");
 class AuthController {
 
     async signup(req, res) {
         try {
             const { emailAddress, fullName, password } = req.body;
 
+            if (fullName.length > 100 || emailAddress.length > 100 || password.length > 64)
+            return res.render("login", { message: "Dữ liệu vượt quá giới hạn cho phép.", isSuccess: false });
+
+            if (!emailAddress || !fullName || !password) {
+                return res.render("login", {
+                    message: "Vui lòng nhập đầy đủ thông tin.",
+                    isSuccess: false
+                });
+            }
+
+            
+            if (password.length < 8 || !/[A-Z]/.test(password) || !/\d/.test(password)) {
+                return res.render("login", {
+                    message: "Mật khẩu phải có ít nhất 8 ký tự, gồm chữ hoa và số.",
+                    isSuccess: false
+                });
+            }    
+
             // Tạo username tự động từ emailAddress
             const username = emailAddress.split("@")[0];
+
+
 
             // Kiểm tra nếu email hoặc username đã tồn tại
             const existingUser = await User.findOne({ $or: [{ username }, { emailAddress }] });
@@ -19,15 +39,18 @@ class AuthController {
                 });
             }
 
-            // Tạo người dùng mới
+            
+            const hashedPassword = await bcrypt.hash(password, 10);
+
+
+
             const user = new User({
                 username,
                 emailAddress,
                 fullName,
-                password
+                password : hashedPassword
             });
 
-            // Lưu người dùng vào cơ sở dữ liệu
             await user.save();
 
             res.render("login", {
@@ -64,7 +87,7 @@ class AuthController {
             }
 
             // Kiểm tra mật khẩu
-            const isMatch = await user.comparePassword(password);
+            const isMatch = await bcrypt.compare(password, user.password);
             if (!isMatch) {
                 return res.render("login", { 
                     message: "Email hoặc mật khẩu không đúng.",

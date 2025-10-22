@@ -1,26 +1,30 @@
 const express = require("express");
 const router = express.Router();
-const AuthController = require ("../controllers/auth.controller")
+// const csrf = require("csurf");
+const AuthController = require("../controllers/auth.controller");
 
-// Route GET /login: Render trang login
+// const csrfProtection = csrf({ cookie: true });
+
+// Render trang login có token
 router.get("/login", (req, res) => {
     const message = req.session.message || null;
     const isSuccess = req.session.isSuccess || null;
     req.session.isSuccess = null;
-    req.session.message = null; // Xóa thông báo sau khi hiển thị
+    req.session.message = null;
+
     res.render("login", {
         message,
-        isSuccess
+        isSuccess,
+        // csrfToken: req.csrfToken() // truyền token ra view
     });
 });
 
-// Route POST /login: Xử lý logic đăng nhập
+// Xử lý đăng nhập
 router.post("/login", AuthController.login);
 
-// Route POST /signup: Xử lý logic đăng ký
+// Xử lý đăng ký
 router.post("/signup", AuthController.signup);
 
 router.get("/logout", AuthController.logout);
-
 
 module.exports = router;
